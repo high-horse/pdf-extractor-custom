@@ -1,0 +1,196 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+
+	"github.com/unidoc/unipdf/v4/common/license"
+	"github.com/unidoc/unipdf/v4/extractor"
+	"github.com/unidoc/unipdf/v4/model"
+)
+
+const (
+	UNIDOC_LICENSE_API_KEY = "38311761653b7d673d05b475e0a29fbca0d87f42b623d9f7dd016f900dbdcdd4"
+	INPUT_FILE             = "imput/1_कोशी प्रदेश_4_झापा_5031_कमल गाउँपालिका.pdf"
+	OUTPUT_DIR             = "output/"
+)
+
+func main() {
+	log.Println("Starting...")
+	// 1. Set license
+	err := license.SetMeteredKey(UNIDOC_LICENSE_API_KEY)
+	if err != nil {
+		fmt.Printf("License error: %v\n", err)
+		fmt.Println("Try setting environment variable instead:")
+		fmt.Println("  export UNIDOC_LICENSE_API_KEY=your_key_here")
+		os.Exit(1)
+	}
+	log.Println("initial completed ")
+
+	// Optional: show credit usage (uncomment if you want to monitor)
+	// license.SetMeteredKeyUsageLogVerboseMode(true)
+
+	// 2. Use fixed input file (or allow command-line override)
+	pdfPath := INPUT_FILE
+	if len(os.Args) > 1 {
+		pdfPath = os.Args[1] // allow override: go run main.go other.pdf
+	}
+
+	// 3. Create output directory if it doesn't exist
+	if err := os.MkdirAll(OUTPUT_DIR, 0755); err != nil {
+		fmt.Printf("Failed to create output directory '%s': %v\n", OUTPUT_DIR, err)
+		os.Exit(1)
+	}
+
+	// 4. Open PDF
+	doc, err := model.PdfReaderFromFile(pdfPath)
+	if err != nil {
+		fmt.Printf("Error opening PDF '%s': %v\n", pdfPath, err)
+		os.Exit(1)
+	}
+	defer doc.Close()
+
+	numPages := doc.GetNumPages()
+	fmt.Printf("Processing file: %s\n", filepath.Base(pdfPath))
+	fmt.Printf("Total pages: %d\n\n", numPages)
+
+	for pageNum := 1; pageNum <= numPages; pageNum++ {
+		page, err := doc.GetPage(pageNum)
+		if err != nil {
+			fmt.Printf("Page %d: failed to get page → %v\n", pageNum, err)
+			continue
+		}
+
+		ex, err := extractor.New(page)
+		if err != nil {
+			fmt.Printf("Page %d: extractor init failed → %v\n", pageNum, err)
+			continue
+		}
+
+		images, err := ex.GetImagesWithPosition()
+		if err != nil {
+			fmt.Printf("Page %d: image extraction error → %v\n", pageNum, err)
+			continue
+		}
+
+		if len(images) == 0 {
+			fmt.Printf("Page %d: no embedded images found\n", pageNum)
+			continue
+		}
+
+		fmt.Printf("Page %d → found %d image(s):\n", pageNum, len(images))
+
+		for i, img := range images {
+			imgData, format, err := img.Image.ImageData()
+			if err != nil {
+				fmt.Printf("  Image %d: failed to get data → %v\n", i+1, err)
+				continue
+			}
+
+			// Better filename pattern: page_001_img_001.jpg
+			filename := fmt.Sprintf("page_%03d_img_%03d.%s", pageNum, i+1, format)
+
+			// Full path in output directory
+			fullPath := filepath.Join(OUTPUT_DIR, filename)
+
+			if err := os.WriteFile(fullPath, imgData, 0644); err != nil {
+				fmt.Printf("  Failed to save %s → %v\n", filename, err)
+				continue
+			}
+
+			fmt.Printf("  ✓ Saved: %-25s   pos: (%5.0f, %5.0f)   size: %5.0f × %5.0f\n",
+				filename, img.Position.X, img.Position.Y, img.Width, img.Height)
+		}
+		fmt.Println()
+	}
+
+	fmt.Printf("Extraction finished!\nImages saved in: %s/\n", OUTPUT_DIR)
+}
+
+// func init() {
+// 	// Recommended: Load from environment variable
+// 	// err := license.SetMeteredKey(os.Getenv("UNIDOC_LICENSE_API_KEY"))
+// 	err := license.SetMeteredKey(UNIDOC_LICENSE_API_KEY)
+// 	// Alternative (for quick testing): license.SetMeteredKey("your_key_here_directly")
+
+// 	if err != nil {
+// 		fmt.Printf("License error: %v\n", err)
+// 		fmt.Println("→ Make sure UNIDOC_LICENSE_API_KEY is set in your environment")
+// 		fmt.Println("→ Get your free metered key at: https://cloud.unidoc.io")
+// 		os.Exit(1)
+// 	}
+
+// 	// Optional: Show credit usage in console (useful to track free tier limits)
+// 	// license.SetMeteredKeyUsageLogVerboseMode(true)
+// }
+
+// func main() {
+// 	if len(os.Args) < 2 {
+// 		fmt.Println("Usage: go run main.go your_pdf_file.pdf")
+// 		os.Exit(1)
+// 	}
+
+// 	pdfPath := os.Args[1]
+// 	doc, err := model.PdfReaderFromFile(pdfPath)
+// 	if err != nil {
+// 		fmt.Printf("Error opening PDF: %v\n", err)
+// 		return
+// 	}
+// 	defer doc.Close()
+
+// 	numPages := doc.GetNumPages()
+// 	fmt.Printf("Processing %d page(s)...\n\n", numPages)
+
+// 	for pageNum := 1; pageNum <= numPages; pageNum++ {
+// 		page, err := doc.GetPage(pageNum)
+// 		if err != nil {
+// 			fmt.Printf("Page %d: failed to get page → %v\n", pageNum, err)
+// 			continue
+// 		}
+
+// 		ex, err := extractor.New(page)
+// 		if err != nil {
+// 			fmt.Printf("Page %d: extractor init failed → %v\n", pageNum, err)
+// 			continue
+// 		}
+
+// 		// This is the key method → gets individual images + position info
+// 		images, err := ex.GetImagesWithPosition()
+// 		if err != nil {
+// 			fmt.Printf("Page %d: image extraction error → %v\n", pageNum, err)
+// 			continue
+// 		}
+
+// 		if len(images) == 0 {
+// 			fmt.Printf("Page %d: no embedded images found\n", pageNum)
+// 			continue
+// 		}
+
+// 		fmt.Printf("Page %d → found %d individual image(s):\n", pageNum, len(images))
+
+// 		for i, img := range images {
+// 			// Get the original image bytes + format (jpeg/png/etc.)
+// 			imgData, format, err := img.Image.ImageData()
+// 			if err != nil {
+// 				fmt.Printf("  Image %d: failed to get data → %v\n", i+1, err)
+// 				continue
+// 			}
+
+// 			filename := fmt.Sprintf("page_%02d_img_%03d.%s", pageNum, i+1, format)
+
+// 			if err := os.WriteFile(filename, imgData, 0644); err != nil {
+// 				fmt.Printf("  Failed to save %s → %v\n", filename, err)
+// 				continue
+// 			}
+
+// 			// Position is in PDF user space (bottom-left origin, ~72 units = 1 inch)
+// 			fmt.Printf("  ✓ Saved: %-20s   pos: (%4.0f, %4.0f)   size: %4.0f × %4.0f\n",
+// 				filename, img.Position.X, img.Position.Y, img.Width, img.Height)
+// 		}
+// 		fmt.Println("") // spacing between pages
+// 	}
+
+// 	fmt.Println("Extraction finished! Check the saved files.")
+// }
