@@ -5,8 +5,8 @@ build-static:
 
 
 build-win64:
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o bin/win/extractor-static-windows-amd64.exe
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o bin/win/extractor-static-wind64.exe
 	
 build-win32:
-	GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -o app-windows-386.exe
+	GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -o bin/win/extractor-static-wind32.exe
 
