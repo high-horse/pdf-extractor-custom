@@ -1,6 +1,7 @@
-package main
+package unused
 
 import (
+	"bytes"
 	"fmt"
 	"image/jpeg"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"regexp"
 	// "sort"
 
+	"github.com/ledongthuc/pdf"
 	"github.com/unidoc/unipdf/v4/extractor"
 	"github.com/unidoc/unipdf/v4/model"
 	// "github.com/unidoc/unipdf/v4/extractor"
@@ -31,9 +33,7 @@ func extractVoterIDs_(text string) []string {
 	var voterIDs []string
 
 	// Split text by newlines to process line by line
-	lines := strings.Split(text, "\n")
-
-	for _, line := range lines {
+	for line := range strings.SplitSeq(text, "\n") {
 		// Trim whitespace
 		line = strings.TrimSpace(line)
 
@@ -214,4 +214,32 @@ func extractImagesWithIDNames(inputPath, outputDir string) error {
 
 	fmt.Printf("\n✓ Extracted %d images total\n", totalExtracted)
 	return nil
+}
+
+// Extract text from PDF using ledongthuc/pdf package
+func extractTextFromPage(inputPath string, pageNum int) (string, error) {
+	f, r, err := pdf.Open(inputPath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	totalPages := r.NumPage()
+	if pageNum > totalPages {
+		return "", fmt.Errorf("page %d out of range (total: %d)", pageNum, totalPages)
+	}
+
+	p := r.Page(pageNum)
+	if p.V.IsNull() {
+		return "", nil
+	}
+
+	var buf bytes.Buffer
+	text, err := p.GetPlainText(nil)
+	if err != nil {
+		return "", err
+	}
+
+	buf.WriteString(text)
+	return buf.String(), nil
 }

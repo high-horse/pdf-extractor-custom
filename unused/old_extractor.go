@@ -1,4 +1,4 @@
-package main
+package unused
 
 import (
 	// "errors"
@@ -6,6 +6,8 @@ import (
 	"image/jpeg"
 	"log"
 	"sort"
+	
+	"regexp"
 
 	// "io/fs"
 	"os"
@@ -15,6 +17,8 @@ import (
 	"github.com/unidoc/unipdf/v4/model"
 )
 
+var idRegex = regexp.MustCompile(`\b[\p{Nd}]{8}\b`)
+	
 // Extracts images and names them using the 8-digit ID number found on the same page
 func extractImagesWithIDNames_v1(inputPath, outputDir string) error {
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {

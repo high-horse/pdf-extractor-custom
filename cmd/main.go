@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"sync"
 
 	// "image/jpeg"
@@ -34,8 +33,7 @@ var (
 	outputDir  = flag.String("output", "output/", "Output directory.")
 	inputFiles stringSlice
 	
-	idRegex = regexp.MustCompile(`\b[\p{Nd}]{8}\b`)
-	
+
 )
 
 type stringSlice []string
